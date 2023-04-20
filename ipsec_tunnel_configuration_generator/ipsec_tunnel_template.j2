@@ -1,0 +1,67 @@
+===================================
+ON: {{ hostname }}
+===================================
+!
+!Create IKE Crypto Profile
+!
+set network ike crypto-profiles ike-crypto-profiles {{ ike_crypto_profile }} hash sha512
+set network ike crypto-profiles ike-crypto-profiles {{ ike_crypto_profile }} dh-group group19
+set network ike crypto-profiles ike-crypto-profiles {{ ike_crypto_profile }} encryption aes-256-cbc
+set network ike crypto-profiles ike-crypto-profiles {{ ike_crypto_profile }} lifetime hours 8
+!
+!Create IPSEC Crypto Profile
+!
+set network ike crypto-profiles ipsec-crypto-profiles {{ ipsec_crypto_profile }} esp authentication sha512
+set network ike crypto-profiles ipsec-crypto-profiles {{ ipsec_crypto_profile }} esp encryption aes-256-cbc
+set network ike crypto-profiles ipsec-crypto-profiles {{ ipsec_crypto_profile }} lifetime hours 1
+set network ike crypto-profiles ipsec-crypto-profiles {{ ipsec_crypto_profile }} dh-group group19
+!
+!Create IKE Gateway
+!
+set network ike gateway {{ike_gateway }} authentication pre-shared-key key {{ pre_shared_key }}
+set network ike gateway {{ike_gateway }} protocol ikev1 dpd enable yes
+set network ike gateway {{ike_gateway }} protocol ikev2 dpd enable yes
+set network ike gateway {{ike_gateway }} protocol ikev2 ike-crypto-profile {{ ike_crypto_profile }}
+set network ike gateway {{ike_gateway }} protocol version ikev2
+set network ike gateway {{ike_gateway }} local-address ip {{ local_ip }}
+set network ike gateway {{ike_gateway }} local-address interface {{ local_interface }}
+set network ike gateway {{ike_gateway }} protocol-common nat-traversal enable no
+set network ike gateway {{ike_gateway }} protocol-common fragmentation enable no
+set network ike gateway {{ike_gateway }} peer-address ip {{ peer_ip }}
+set network ike gateway {{ike_gateway }} local-id type ipaddr id {{ local_ip }}
+set network ike gateway {{ike_gateway }} peer-id type ipaddr id {{ peer_ip }}
+!
+!Create tunnel_interface Interface
+set network interface tunnel units {{ tunnel_interface }} comment {{ tunnel_comment }}
+set network interface tunnel units {{ tunnel_interface }} ip {{ tunnel_ip_address }}
+set network interface tunnel units {{ tunnel_interface }} interface-management-profile Ping-Only
+!
+!
+set import network interface {{ tunnel_interface }}
+set network virtual-router default interface {{ tunnel_interface }}
+set network tunnel ipsec {{ ipsec_tunnel }} tunnel-interface {{ tunnel_interface }}
+set zone {{ zone }} network layer3 {{ tunnel_interface }}
+!
+{% if ospf == 'enabled' %}
+!Enable OSPF For Tunnel Interface
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} bfd profile Inherit-vr-global-setting
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} enable yes
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} passive no
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} gr-delay 10
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} metric 10
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} priority 1
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} hello-interval 10
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} dead-counts 4
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} retransmit-interval 5
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} transit-delay 1
+set network virtual-router default protocol ospf area 0.0.0.0 interface {{ tunnel_interface }} link-type p2p
+{% endif %}
+!
+!
+set network tunnel ipsec {{ ipsec_tunnel }} auto-key ike-gateway {{ ike_gateway }}
+set network tunnel ipsec {{ ipsec_tunnel }} auto-key ipsec-crypto-profile {{ ipsec_crypto_profile }}
+set network tunnel ipsec {{ ipsec_tunnel }} tunnel-monitor enable no
+set network tunnel ipsec {{ ipsec_tunnel }} tunnel-interface {{ tunnel_interface }}
+set network tunnel ipsec {{ ipsec_tunnel }} comment {{ ipsec_tunnel_comment }}
+!
+
